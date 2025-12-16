@@ -1,7 +1,7 @@
 // ==UserScript==
-// @name         Facebook Enhancer v3.31 (Tweaked)
-// @namespace    https://github.com/Eliminater74/FacebookEnhancer
-// @version      3.31
+// @name         Facebook Enhancer v3.32 (Tweaked)
+// @namespace    https://github.com/TamperMonkeyDevelopment/TamperMonkeyScripts
+// @version      3.32
 // @description  Hide/soft-remove Reels, Stories, Suggestions, PYMK, right-rail ads; pause/mute videos; unwrap links on click; keyword+regex filters; sticky 'Most Recent'; draggable settings panel (position save) + import/export; blur/review/show-hidden modes; per-post "Hide posts like this" control; hotkeys; throttled observer; locale-aware 'Sponsored'.
 // @author       Eliminater74 (with tweaks by Gemini)
 // @match        *://*.facebook.com/*
@@ -27,10 +27,13 @@
     video: 'video:not([data-fb-enhanced="v"])',
     storiesModule: 'div[aria-label="Stories"], div[data-pagelet*="Stories"]',
     reelLink: 'a[href*="/reel/"], a[href*="/reels/"]',
+    reelsTab: 'a[href*="/reels/"][role="link"]',
     rightRail: 'div[data-pagelet*="RightRail"]',
     commentButton: 'div[role="button"]',
     addFriendButton: 'button[aria-label*="Add Friend"]',
-    pymkText: 'people you may know'
+    pymkText: 'people you may know',
+    gaming: 'div[data-pagelet*="Gaming"], a[href*="/gaming/"]',
+    createRoom: 'div[data-pagelet*="VideoChatHomeUnit"]'
   };
 
   const defaultSettings = {
@@ -48,11 +51,14 @@
     blockSuggested: true,
     hideReels: true,
     hideReelLinks: true,      // remove any unit that links to /reel/ or /reels/
+    hideReelsTab: true,       // Hide Reels from the left sidebar
     aggressiveReelsBlock: true, // broader heuristics (video-count etc.)
     reelsHeadingPhrases: 'reels,reels and short videos,short videos',
     hideStories: true,
     hidePeopleYouMayKnow: true,
     hideRightRailAds: true,
+    hideGaming: false,        // Hide Gaming tabs/units
+    hideCreateRoom: true,     // Hide "Create Room" / Video Chat units
     keywordFilter: 'kardashian,tiktok,reaction',
     keywordRegex: '',
 
@@ -233,11 +239,14 @@
     addRow(gFeed, 'blockSuggested', 'Hide Suggested for you');
     addRow(gFeed, 'hideReels', 'Hide Reels modules');
     addRow(gFeed, 'hideReelLinks', 'Hide units that contain /reel/ links');
+    addRow(gFeed, 'hideReelsTab', 'Hide Reels Tab (Sidebar)');
     addRow(gFeed, 'aggressiveReelsBlock', 'Aggressive Reels heuristics');
     addRow(gFeed, 'reelsHeadingPhrases', 'Reels heading phrases (comma)', 'text', 'reels,reels and short videos,short videos');
     addRow(gFeed, 'hideStories', 'Hide Stories');
     addRow(gFeed, 'hidePeopleYouMayKnow', 'Hide People You May Know');
     addRow(gFeed, 'hideRightRailAds', 'Hide Right Rail Ads');
+    addRow(gFeed, 'hideGaming', 'Hide Gaming sections/links');
+    addRow(gFeed, 'hideCreateRoom', 'Hide "Create Room" banner');
     addRow(gFeed, 'keywordFilter', 'Keyword filter (comma-separated)', 'text', 'kardashian,tiktok,reaction');
     addRow(gFeed, 'keywordRegex', 'Keyword Regex (optional)', 'text', '(giveaway|crypto)\\b');
 
@@ -644,6 +653,31 @@
     });
   }
 
+  function hideGaming(root = document) {
+    if (!settings.hideGaming) return;
+    root.querySelectorAll(SELECTORS.gaming).forEach(el => {
+      if (el.dataset.fbEnhanced === '1') return;
+      softOrHardRemove(closestContentContainer(el));
+    });
+  }
+
+  function hideCreateRoom(root = document) {
+    if (!settings.hideCreateRoom) return;
+    root.querySelectorAll(SELECTORS.createRoom).forEach(el => {
+      if (el.dataset.fbEnhanced === '1') return;
+      softOrHardRemove(el);
+    });
+  }
+
+  function hideReelsSidebarTab(root = document) {
+    if (!settings.hideReelsTab) return;
+    root.querySelectorAll(SELECTORS.reelsTab).forEach(el => {
+      const li = el.closest('li');
+      if (li) softOrHardRemove(li);
+      else softOrHardRemove(el);
+    });
+  }
+
   function collapseSidebarSections(root = document) {
     const map = {
       toggleMarketplace: 'marketplace',
@@ -752,6 +786,10 @@
       hideRightRailAds(root); // Also run the query-based one
     }
 
+    if (settings.hideGaming) hideGaming(root);
+    if (settings.hideCreateRoom) hideCreateRoom(root);
+    if (settings.hideReelsTab) hideReelsSidebarTab(root);
+
     // Scoped version of Sidebar
     collapseSidebarSections(root);
   }
@@ -796,6 +834,9 @@
     hideStories();
     hidePeopleYouMayKnow();
     hideRightRailAds();
+    hideGaming();
+    hideCreateRoom();
+    hideReelsSidebarTab();
     collapseSidebarSections();
   }
 
